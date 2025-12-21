@@ -1,17 +1,9 @@
 import open3d as o3d
 import numpy as np
 from ultralytics import YOLO
+from utils import get_ROI_points, process_yolo_boxes, bev_to_coords, delete_points
 
-# Collect all points with [minX, maxX), [minY, maxY), [minZ, maxZ) interval
-def get_ROI_points(pcd_points, pcdRange):
-    mask = (pcd_points[:, 0] >= pcdRange[0]) & \
-            (pcd_points[:, 0] < pcdRange[1]) & \
-            (pcd_points[:, 1] >= pcdRange[2]) & \
-            (pcd_points[:, 1] < pcdRange[3]) & \
-            (pcd_points[:, 2] >= pcdRange[4]) & \
-            (pcd_points[:, 2] < pcdRange[5])
-    return pcd_points[mask]
-    
+
 # Create (x, y): (counts, maxZ) dict
 def get_CoordToCountVal_dict(points):
     coord_to_countval = dict()
@@ -53,7 +45,7 @@ def preprocess(pcd_points, gridParams):
     points_ROI[:, 0] = np.int32(np.floor((points_ROI[:, 0] - xMin) / gridH))
     points_ROI[:, 1] = np.int32(np.floor((points_ROI[:, 1] - yMin) / gridW))
     
-    points_ROI[:, 2] = points_ROI[:, 2] - min(points_ROI[:, 2])
+    points_ROI[:, 2] = points_ROI[:, 2] - np.min(points_ROI[:, 2])
     points_ROI[:, 2] = points_ROI[:, 2] / (pcdRange[5] - pcdRange[4])
     
     ix = np.lexsort((points_ROI[:, 2][::-1], points_ROI[:, 1], points_ROI[:, 0]))
@@ -79,8 +71,6 @@ def preprocess(pcd_points, gridParams):
     return imageMap
     
     
-    
-
 def main():
     pcd = o3d.io.read_point_cloud("./assets/points.pcd")
 
@@ -104,7 +94,18 @@ def main():
 
     bevImage = preprocess(points_array, gridParams)
 
-    model.predict(bevImage)
+    #results = model.predict(bevImage)
+    bboxes = process_yolo_boxes(gridParams)
+    pcd_coords = bev_to_coords(bboxes, gridParams)
+    output_pcd = delete_points(points_array, pcd_coords)
+    print(len(points_array))
+    print(len(output_pcd))
+    
+    pcd_o = o3d.geometry.PointCloud()
+    v3d = o3d.utility.Vector3dVector
+    pcd_o.points = v3d(output_pcd)
+    o3d.io.write_point_cloud("./assets/processed.pcd", pcd_o, compressed=True)
+
     
 
 if __name__ == "__main__":
