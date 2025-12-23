@@ -1,7 +1,8 @@
 import open3d as o3d
 import numpy as np
 from ultralytics import YOLO
-from utils import get_ROI_points, process_yolo_boxes, bev_to_coords, delete_points
+from utils import *
+from filler import *
 
 
 # Create (x, y): (counts, maxZ) dict
@@ -72,7 +73,7 @@ def preprocess(pcd_points, gridParams):
     
     
 def main():
-    pcd = o3d.io.read_point_cloud("./assets/points.pcd")
+    pcd = o3d.io.read_point_cloud("./assets/cropped.pcd")
 
     points_array = np.asarray(pcd.points)
 
@@ -90,20 +91,21 @@ def main():
 
     gridParams = ((xMin, xMax, yMin, yMax, zMin, zMax), (bevWidth, bevHeight), (gridW, gridH))
 
-    classNames = ('Car', 'Truck', 'Pedestrain')
-
     bevImage = preprocess(points_array, gridParams)
 
-    #results = model.predict(bevImage)
-    bboxes = process_yolo_boxes(gridParams)
+    bboxes = process_yolo_boxes(bevImage, model)
     pcd_coords = bev_to_coords(bboxes, gridParams)
     output_pcd = delete_points(points_array, pcd_coords)
+    new_outpud_pcd = fill_deleted_areas(output_pcd, bboxes)
+    
     print(len(points_array))
     print(len(output_pcd))
+    print(len(new_outpud_pcd))
+    
     
     pcd_o = o3d.geometry.PointCloud()
     v3d = o3d.utility.Vector3dVector
-    pcd_o.points = v3d(output_pcd)
+    pcd_o.points = v3d(new_outpud_pcd)
     o3d.io.write_point_cloud("./assets/processed.pcd", pcd_o, compressed=True)
 
     
