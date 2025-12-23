@@ -51,9 +51,13 @@ def get_plane_points_with_density(pcd_points, bboxes):
         point_list3_2 = pcd_points[get_ROI_mask_xy(pcd_points, areas[3])]
         point_list3 = np.concatenate((point_list3_1, point_list3_2))
         
-        mean_1 = np.mean(point_list1, axis=0)
-        mean_2 = np.mean(point_list2, axis=0)
-        mean_3 = np.mean(point_list3, axis=0)
+        
+        point_list1 = point_list1[point_list1[:, 2].argsort()]
+        point_list2 = point_list2[point_list2[:, 2].argsort()]
+        point_list3 = point_list3[point_list3[:, 2].argsort()]
+        mean_1 = np.mean(point_list1[:len(point_list1) // 2], axis=0)
+        mean_2 = np.mean(point_list2[:len(point_list2) // 2], axis=0)
+        mean_3 = np.mean(point_list3[:len(point_list3) // 2], axis=0)
         
         s = (areas[0][1] - areas[0][0]) * (areas[0][3] - areas[0][2]) + \
             (areas[1][1] - areas[1][0]) * (areas[1][3] - areas[1][2]) + \
@@ -63,7 +67,7 @@ def get_plane_points_with_density(pcd_points, bboxes):
         counts = len(point_list1) + len(point_list2) + len(point_list3)
 
         densities.append(counts / s)
-        
+         
         plane_points.append([mean_1, mean_2, mean_3])
     
     return [np.asarray(plane_points), np.asarray(densities)]
@@ -78,6 +82,8 @@ def get_plane_params(plane_points):
     
     
 def get_filling_points(plane_params, bboxes, densities):
+    sigma = 1
+    
     dxy = np.full((len(bboxes), 2), 0)
     dxy[:, 0] = bboxes[:, 1] - bboxes[:, 0]
     dxy[:, 1] = bboxes[:, 3] - bboxes[:, 2]
@@ -94,12 +100,12 @@ def get_filling_points(plane_params, bboxes, densities):
         for x in xs:
             for y in ys:
                 z = -(current_plane_params[0] * x + current_plane_params[1] * y + current_plane_params[3]) / current_plane_params[2]
-                filling_points.append([x, y, z])
-    # z_coords = -(plane_params[0] * xy_coords[:, 0] + plane_params[1] * xy_coords[:, 1] + plane_params[3]) / plane_params[2]
-    # xyz_coords = np.append(xy_coords, z_coords.reshape(-1, 1), axis=1)
-    # print(xyz_coords)
-    # print(plane_params)
-    # x = np.linspace(0, 100, 10)
+                
+                x_norm = np.random.normal(x, sigma, 1)[0]
+                y_norm = np.random.normal(y, sigma, 1)[0]
+                z_norm = np.random.normal(z, sigma * 0.001, 1)[0]
+                
+                filling_points.append([x_norm, y_norm, z_norm])
     
     return np.asarray(filling_points)
     
@@ -108,45 +114,6 @@ def fill_deleted_areas(pcd_points, bboxes):
     [plane_points, densities] = get_plane_points_with_density(pcd_points, bboxes)
     plane_params = get_plane_params(plane_points)
 
-    filling_points = get_filling_points(plane_params, bboxes, densities)
+    filling_points = get_filling_points(plane_params, bboxes, densities * 1.5)
     pcd_points = np.concatenate((pcd_points, filling_points))
     return pcd_points
-    # new_points = np.array(())
-    
-    
-    # print(plane_params)
-
-# point1 = [1, 1, 3]
-# point2 = [3, 4, 7]
-# point3 = [-2, 2, -14]
-
-# # point1 = [1, 1, -9]
-# # point2 = [3, 4, -26]
-# # point3 = [-2, 2, -16.5]
-
-# pl_param = equation_plane(point1, point2, point3)
-# # print(pl_param)
-
-# arr = np.array(((2, 2), (-4, 3), (5, 5)))
-
-# # z = ge
-# get_fill_points(arr, pl_param)
-
-# dx = 100
-# dy = 100
-# s1 = dx * dy
-
-# num_points = 2000
-
-# dens = num_points / s1
-
-# dfx = 50
-# dfy = 50
-# sf = dfx * dfy
-
-# point_n = dens * sf
-# points_in_line = int(point_n ** 0.5) + 1
-# # print(points_in_line)
-
-# # print(np.arange(0, 100, 100 / 10))
-# print(np.linspace(0, 100, 10))
