@@ -4,6 +4,17 @@ import open3d
 import coords
 
 
+# Create (x, y): (counts, maxZ) dict
+def get_CoordToCountVal_dict(points):
+    coord_to_countval = dict()
+    for point in points:
+        if coord_to_countval.get((point[0], point[1])) == None:
+            coord_to_countval[((point[0], point[1]))] = [1, point[2]]
+        else:
+            coord_to_countval[((point[0], point[1]))][0] += 1
+    return coord_to_countval
+
+
 def get_ROI_mask_xyz(points, p_range):
     mask = (points[:, 0] >= p_range[0]) & \
             (points[:, 0] < p_range[1]) & \

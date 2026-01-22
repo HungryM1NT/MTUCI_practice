@@ -1,31 +1,22 @@
+from train_utils import *
+import pandas as pd
 import os
-import requests
-import tarfile
+import numpy as np
 
 
-
-def helperDownloadPandasetData(outputFolder: str, lidarURL: str):
-    lidarDataTarFile = f'{outputFolder}/Pandaset_LidarData.tar.gz'
-    if not os.path.exists(lidarDataTarFile):
-        os.mkdir(outputFolder)
-        print('Downloading PandaSet Lidar driving data (5.2 GB)...')
-        response = requests.get(lidarURL, stream=True)
-        file = tarfile.open(fileobj=response.raw, mode="r|gz")
-        file.extractall(path=outputFolder)
-
-
-
-outputFolder = './Pandaset'
-lidarURL = 'https://ssd.mathworks.com/supportfiles/lidar/data/Pandaset_LidarData.tar.gz'
+outputFolder: str = './Pandaset'
+lidarURL: str = 'https://ssd.mathworks.com/supportfiles/lidar/data/Pandaset_LidarData.tar.gz'
 helperDownloadPandasetData(outputFolder, lidarURL)
 
-path = f'{outputFolder}/Lidar'
-pass #TODO pcds
-
-gtPath = f'{outputFolder}/Cuboids/PandaSetLidarGroundTruth.mat'
-
+path: str = f'{outputFolder}/Lidar'
+# PCDS isn't iterator
+pcds = np.asarray([f'{path}/{x}' for x in os.listdir(path)])
 
 
+# gtPath = f'{outputFolder}/Cuboids/PandaSetLidarGroundTruth.mat'
+gtPath: str = './table.csv'
+df = pd.read_csv(gtPath)
+boxLabels = df.drop('Time', axis=1)
 
 # Params
 xMin = -25.0
@@ -39,4 +30,10 @@ bevWidth = 608
 gridW = (yMax - yMin)/bevWidth
 gridH = (xMax - xMin)/bevHeight
 gridParams = ((xMin, xMax, yMin, yMax, zMin, zMax), (bevWidth, bevHeight), (gridW, gridH))
+
+
+writeFiles = True
+if writeFiles:
+    transformPCtoBEV(pcds, boxLabels, gridParams, outputFolder)  #TODO написать функцию
+
 
