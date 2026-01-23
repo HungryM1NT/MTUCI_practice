@@ -103,7 +103,7 @@ def transformPCtoBEV(lidarData, boxLabels: pd.DataFrame, gridParams, dataLocatio
 def preprocess(pcd_points, gridParams):
     pcdRange = gridParams[0]
     points_ROI = get_ROI_points(pcd_points, pcdRange)
-    print(pcd_points.sum())
+    print(len(pcd_points))
     
     xMin = gridParams[0][0]
     yMin = gridParams[0][2]
@@ -121,14 +121,19 @@ def preprocess(pcd_points, gridParams):
     points_ROI[:, 2] = points_ROI[:, 2] - np.min(points_ROI[:, 2])
     points_ROI[:, 2] = points_ROI[:, 2] / (pcdRange[5] - pcdRange[4])
     
-    ix = np.lexsort((points_ROI[:, 2][::-1], points_ROI[:, 1], points_ROI[:, 0]))
+    ix = np.lexsort((-points_ROI[:, 2], points_ROI[:, 1], points_ROI[:, 0]))
     points_ROI = points_ROI[ix]
+    # ALL OK
+    # print(points_ROI[0:20])
     
     heightMap = np.zeros((bevHeight, bevWidth))
     densityMap = np.zeros((bevHeight, bevWidth))
     
     points_ROI[:, 0] = np.minimum(np.maximum(points_ROI[:, 0], 0), bevHeight)
     points_ROI[:, 1] = np.minimum(np.maximum(points_ROI[:, 1], 0), bevWidth)
+    
+    # ALL OK
+    # print(points_ROI[0:20])
     
     coord_to_countval = get_CoordToCountVal_dict(points_ROI)
     
@@ -142,6 +147,7 @@ def preprocess(pcd_points, gridParams):
     imageMap[:,:,2] = heightMap
     
 
+    print(imageMap[:20, :, 0])
     return imageMap
 
 def removeEmptyData():
