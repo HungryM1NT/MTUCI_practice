@@ -11,6 +11,7 @@ helperDownloadPandasetData(outputFolder, lidarURL)
 path: str = f'{outputFolder}/Lidar'
 # PCDS isn't iterator
 pcds = np.asarray([f'{path}/{x}' for x in os.listdir(path)])
+pcds.sort()
 
 
 # gtPath = f'{outputFolder}/Cuboids/PandaSetLidarGroundTruth.mat'

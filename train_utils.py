@@ -6,12 +6,15 @@ import numpy as np
 import open3d as o3d
 import pandas as pd
 from utils import *
+import cv2 as cv
+from pypcd4 import PointCloud
 
 
+# Class name : start index
 CSV_CONSTS = {
-    "Car": 666,
-    "Truck": 99,
-    "Pedestrain": 621
+    "Car": 0,
+    "Truck": 666,
+    "Pedestrain": 765
 }
 
 
@@ -31,55 +34,76 @@ def preprocessData():
 def helperDisplayBoxes():
     pass
 
-def transformPCtoBEV(lidarData, boxLabels: pd.DataFrame, gridParams, outputFolder):
+def transformPCtoBEV(lidarData, boxLabels: pd.DataFrame, gridParams, dataLocation):
     classNames = ["Car", "Truck", "Pedestrain"]
     numFiles = boxLabels.shape[0]
-    processedLabels = np.zeros(boxLabels.shape)
+    processedLabels = np.ndarray((*boxLabels.shape, 5))
     
-    # for i in range(numFiles):
-    #     pass
+    
+    for i in range(numFiles):
+        pcd_filename = lidarData[i]
+        # pcd_filename = './bunny.pcd'
+        # pcd = o3d.io.read_point_cloud(pcd_filename)  # ty:ignore[possibly-missing-attribute]
+        # points_array = np.asarray(pcd.points)
+        # print(pcd)
+        pcd = PointCloud.from_path(pcd_filename)
+        points_array = pcd.numpy(("x", "y", "z"))
+        points_array = points_array[~np.isnan(points_array).any(axis=1)]
+                  
+        groundTruth = boxLabels.iloc[i].values
         
+        nulls = np.argwhere(pd.isnull(groundTruth))
+        c_num = np.int32(np.min(nulls) / 9)
+        t_num = np.int32((np.min(nulls[np.where(nulls >= CSV_CONSTS['Truck'])]) - CSV_CONSTS['Truck']) / 9)
+        p_num = np.int32((np.min(nulls[np.where(nulls >= CSV_CONSTS['Pedestrain'])])
+                        - CSV_CONSTS['Pedestrain']) / 9)
+        ctp = [c_num, t_num, p_num]
         
-    i = 1
-    pcd_filename = lidarData[i]
-    pcd = o3d.io.read_point_cloud(pcd_filename)  # ty:ignore[possibly-missing-attribute]
-    points_array = np.asarray(pcd.points)
-    
-    groundTruth = boxLabels.iloc[i].values
-    
-    bevImage = preprocess(points_array, gridParams)
-    
-    # for j in range(len(classNames))
-    #    pass
-    j = 0
-    # Variable for table in csv format (Car_1..Car_2 it's only one car)
-    k = 0
-    nulls = np.argwhere(pd.isnull(groundTruth))
-    c_num = np.int32(np.min(nulls) / 9)
-    t_num = np.int32((np.min(nulls[np.where(nulls >= CSV_CONSTS['Car'])]) - CSV_CONSTS['Car']) / 9)
-    p_num = np.int32((np.min(nulls[np.where(nulls >= CSV_CONSTS['Car'] + CSV_CONSTS['Truck'])])
-                      - CSV_CONSTS['Car'] - CSV_CONSTS['Truck']) / 9)
+        bevImage = preprocess(points_array, gridParams)
+        
+        for j in range(len(classNames)):
+            j = 2
+            # In csv format (Car_1..9 it's only one car)
+            class_num = ctp[j]
+            labels = groundTruth[CSV_CONSTS[classNames[j]]:CSV_CONSTS[classNames[j]] + class_num * 9].reshape(9, class_num).T
 
-    print(c_num)
-    print(t_num)
-    print(p_num)
-    while pd.notnull(groundTruth[k]):
-        label = groundTruth[k:k + 9]
-        k += 9
-        # print(label) 
-        
-        # label_Indices = 
+            labelsIndices = ((labels[:, 0] - labels[:, 3]) > gridParams[0][0]) \
+                        & ((labels[:, 0] + labels[:, 3]) < gridParams[0][1]) \
+                        & ((labels[:, 1] - labels[:, 4]) < gridParams[0][2]) \
+                        & ((labels[:, 1] + labels[:, 4]) > gridParams[0][3]) \
+                        & ((labels[:, 3] > 0)) \
+                        & ((labels[:, 4] > 0)) \
+                        & ((labels[:, 5] > 0))
+            labels = labels[labelsIndices]
+            labelsBEV = labels[:,[1, 0, 4, 3, 8]]
+            labelsBEV[:, 4] = -labelsBEV[:, 4]
+            
+            labelsBEV[:, 0] = np.int32(np.floor(labelsBEV[:, 0] / gridParams[2][0]) + 1)
+            labelsBEV[:, 1] = np.int32(np.floor(labelsBEV[:, 1] / gridParams[2][1]) + gridParams[1][1] / 2) + 1
+            
+            labelsBEV[:, 2] = np.int32(np.floor(labelsBEV[:, 2] / gridParams[2][0])) + 1
+            labelsBEV[:, 3] = np.int32(np.floor(labelsBEV[:, 3] / gridParams[2][1])) + 1
+
+            # TODO:processedLabels
+            # processedLabels[0, 0, :] = labelsBEV.reshape(-1, 5)[0]
     
-    # print(groundTruth[666+t_num: 666+t_num * 2]) 
-        
-    # print(k) 
-    # labels = 
+        writePath = f'{dataLocation}/BEVImages'
+        if not os.path.exists(writePath):
+            os.mkdir(writePath)
+
+        imgSavePath = f'{writePath}/{i + 1:04d}.jpg'
+        cv.imwrite(imgSavePath, bevImage)
+        print(bevImage.sum())
+        if i == 0:
+            break
+    
     
 
 # Similar to main preprocess
 def preprocess(pcd_points, gridParams):
     pcdRange = gridParams[0]
     points_ROI = get_ROI_points(pcd_points, pcdRange)
+    print(pcd_points.sum())
     
     xMin = gridParams[0][0]
     yMin = gridParams[0][2]
@@ -91,8 +115,8 @@ def preprocess(pcd_points, gridParams):
     gridH = gridParams[2][1]
     
     # Here are differences
-    points_ROI[:, 0] = np.int32(np.floor(points_ROI[:, 0] / gridH) + bevHeight / 2) + 1
-    points_ROI[:, 1] = np.int32(np.floor(points_ROI[:, 1] / gridW)) + 1
+    points_ROI[:, 0] = np.int32(np.floor(points_ROI[:, 0] / gridH) + bevHeight / 2)
+    points_ROI[:, 1] = np.int32(np.floor(points_ROI[:, 1] / gridW))
     
     points_ROI[:, 2] = points_ROI[:, 2] - np.min(points_ROI[:, 2])
     points_ROI[:, 2] = points_ROI[:, 2] / (pcdRange[5] - pcdRange[4])
@@ -117,6 +141,7 @@ def preprocess(pcd_points, gridParams):
     imageMap[:,:,1] = heightMap
     imageMap[:,:,2] = heightMap
     
+
     return imageMap
 
 def removeEmptyData():
