@@ -35,6 +35,6 @@ gridParams = ((xMin, xMax, yMin, yMax, zMin, zMax), (bevWidth, bevHeight), (grid
 
 writeFiles = True
 if writeFiles:
-    transformPCtoBEV(pcds, boxLabels, gridParams, outputFolder)  #TODO написать функцию
+    transformPCtoBEV(pcds, boxLabels, gridParams, outputFolder)
 
 
