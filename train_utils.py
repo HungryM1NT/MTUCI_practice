@@ -60,6 +60,7 @@ def transformPCtoBEV(lidarData, boxLabels: pd.DataFrame, gridParams, dataLocatio
         ctp = [c_num, t_num, p_num]
         
         bevImage = preprocess(points_array, gridParams)
+        bevImage = bevImage * 255
         
         for j in range(len(classNames)):
             j = 2
@@ -92,10 +93,8 @@ def transformPCtoBEV(lidarData, boxLabels: pd.DataFrame, gridParams, dataLocatio
             os.mkdir(writePath)
 
         imgSavePath = f'{writePath}/{i + 1:04d}.jpg'
-        cv.imwrite(imgSavePath, bevImage)
-        print(bevImage.sum())
-        if i == 0:
-            break
+        img = cv.cvtColor(bevImage.astype('float32'), cv.COLOR_RGB2BGR)
+        cv.imwrite(imgSavePath, img)
     
     
 
@@ -103,7 +102,6 @@ def transformPCtoBEV(lidarData, boxLabels: pd.DataFrame, gridParams, dataLocatio
 def preprocess(pcd_points, gridParams):
     pcdRange = gridParams[0]
     points_ROI = get_ROI_points(pcd_points, pcdRange)
-    print(len(pcd_points))
     
     xMin = gridParams[0][0]
     yMin = gridParams[0][2]
@@ -146,8 +144,11 @@ def preprocess(pcd_points, gridParams):
     imageMap[:,:,1] = heightMap
     imageMap[:,:,2] = heightMap
     
-
-    print(imageMap[:20, :, 0])
+    # for manaa in range(10):
+    #     print(np.sum(densityMap[:, manaa]))
+    # print('=-======')
+    # print(np.sum(densityMap))
+    # print(imageMap[:20, :, 0])
     return imageMap
 
 def removeEmptyData():
