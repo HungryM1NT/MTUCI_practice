@@ -53,10 +53,23 @@ def transformPCtoBEV(lidarData, boxLabels: pd.DataFrame, gridParams, dataLocatio
         groundTruth = boxLabels.iloc[i].values
         
         nulls = np.argwhere(pd.isnull(groundTruth))
-        c_num = np.int32(np.min(nulls) / 9)
-        t_num = np.int32((np.min(nulls[np.where(nulls >= CSV_CONSTS['Truck'])]) - CSV_CONSTS['Truck']) / 9)
-        p_num = np.int32((np.min(nulls[np.where(nulls >= CSV_CONSTS['Pedestrain'])])
-                        - CSV_CONSTS['Pedestrain']) / 9)
+
+        if len(nulls):
+            c_num = np.int32(min(np.min(nulls) / 9, 74))
+        else:
+            c_num = 74
+            
+        if len(nulls[np.where(nulls >= CSV_CONSTS['Truck'])]):
+            t_num = np.int32(min((np.min(nulls[np.where(nulls >= CSV_CONSTS['Truck'])]) - CSV_CONSTS['Truck']) / 9, 11))
+        else:
+            t_num = 11
+        
+        if len(nulls[np.where(nulls >= CSV_CONSTS['Pedestrain'])]):
+            p_num = np.int32(min((np.min(nulls[np.where(nulls >= CSV_CONSTS['Pedestrain'])])
+                            - CSV_CONSTS['Pedestrain']) / 9, 69))
+        else:
+            p_num = 69
+
         ctp = [c_num, t_num, p_num]
         
         bevImage = preprocess(points_array, gridParams)
@@ -95,7 +108,6 @@ def transformPCtoBEV(lidarData, boxLabels: pd.DataFrame, gridParams, dataLocatio
         imgSavePath = f'{writePath}/{i + 1:04d}.jpg'
         img = cv.cvtColor(bevImage.astype('float32'), cv.COLOR_RGB2BGR)
         cv.imwrite(imgSavePath, img)
-    
     
 
 # Similar to main preprocess
