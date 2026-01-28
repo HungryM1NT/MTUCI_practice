@@ -7,6 +7,7 @@ import pandas as pd
 from utils import *
 import cv2 as cv
 from pypcd4 import PointCloud
+import re
 
 
 MAX_ELEMENTS = {
@@ -60,6 +61,7 @@ def get_ctp(groundTruth):
         p_num = MAX_ELEMENTS['Pedestrain']
 
     ctp = [c_num, t_num, p_num]
+    return ctp
 
 def transformPCtoBEV(lidarData, boxLabels: pd.DataFrame, gridParams, dataLocation):
     classNames = ["Car", "Truck", "Pedestrain"]
@@ -82,11 +84,15 @@ def transformPCtoBEV(lidarData, boxLabels: pd.DataFrame, gridParams, dataLocatio
                   
         groundTruth = boxLabels.iloc[i].values
         ctp = get_ctp(groundTruth)
+        # print(ctp)
         
         bevImage = preprocess(points_array, gridParams)
         bevImage = bevImage * 255
         
+        labels_text = ''
+        
         for j in range(len(classNames)):
+            # print(j)
             # In csv format (Car_1..9 it's only one car)
             class_num = ctp[j]
             labels = groundTruth[INPUT_CSV_STARTS[classNames[j]]:INPUT_CSV_STARTS[classNames[j]] + class_num * 9].reshape(9, class_num).T
@@ -110,17 +116,32 @@ def transformPCtoBEV(lidarData, boxLabels: pd.DataFrame, gridParams, dataLocatio
             labelsBEV[:, 2] = np.int32(np.floor(labelsBEV[:, 2] / gridParams[2][0]))
             labelsBEV[:, 3] = np.int32(np.floor(labelsBEV[:, 3] / gridParams[2][1]))
 
-            labelsBEV = labelsBEV.T.reshape(-1)
-            processedLabels[i, OUTPUT_CSV_STARTS[classNames[j]]:OUTPUT_CSV_STARTS[classNames[j]] + len(labelsBEV)] = labelsBEV
+            csvBEV = labelsBEV.T.reshape(-1)
+            processedLabels[i, OUTPUT_CSV_STARTS[classNames[j]]:OUTPUT_CSV_STARTS[classNames[j]] + len(csvBEV)] = csvBEV
             
+            lt = np.array2string(labelsBEV[:, :4])
+            lt = re.sub("\[|\]", " ", lt)
+            lt = re.sub(" +", " ", lt)
+            lt = re.sub("^|\n", f"\n{j}", lt)
+            lt = lt.strip()
+            labels_text = "\n".join((labels_text, lt))      
     
-        writePath = f'{dataLocation}/BEVImages'
-        if not os.path.exists(writePath):
-            os.mkdir(writePath)
+        imagesWritePath = f'{dataLocation}/BEVImages'
+        if not os.path.exists(imagesWritePath):
+            os.mkdir(imagesWritePath)
 
-        imgSavePath = f'{writePath}/{i + 1:04d}.jpg'
+        imgSavePath = f'{imagesWritePath}/{i + 1:04d}.jpg'
         img = cv.cvtColor(bevImage.astype('float32'), cv.COLOR_RGB2BGR)
         cv.imwrite(imgSavePath, img)
+        
+        labelsWritePath = f'{dataLocation}/Labels'
+        if not os.path.exists(labelsWritePath):
+            os.mkdir(labelsWritePath)
+        
+        labelSavePath = f'{labelsWritePath}/{i + 1:04d}.txt'
+        with open(labelSavePath, 'w') as labelfile:
+            labelfile.write(labels_text.strip())
+        
         
     
     processedLabels_df = pd.DataFrame(processedLabels, columns=feature_list)
@@ -190,5 +211,5 @@ def iCheckLabels():
 def preprocessData():
     pass
 
-def helperDisplayBoxes():
-    pass
+# def helperDisplayBoxes():
+#     pass

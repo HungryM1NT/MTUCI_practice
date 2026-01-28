@@ -38,3 +38,6 @@ if writeFiles:
     transformPCtoBEV(pcds, boxLabels, gridParams, outputFolder)
 
 
+bevs = np.asarray([f'Pandaset/BEVImages/{x}' for x in os.listdir(path)])
+bevs.sort()
+print(bevs)

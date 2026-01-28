@@ -1,0 +1,13 @@
+train: dataset/train/images
+val: dataset/valid/images
+test: dataset/test/images
+
+train_label_dir: dataset/train/labels
+val_label_dir: dataset/val/labels
+test_label_dir: dataset/test/labels
+
+nc: 3
+names:
+  0: Car
+  1: Truck
+  2: Pedestrain
