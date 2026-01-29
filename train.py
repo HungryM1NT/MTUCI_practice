@@ -2,6 +2,7 @@ from train_utils import *
 import pandas as pd
 import os
 import numpy as np
+import shutil
 
 
 outputFolder: str = './Pandaset'
@@ -33,11 +34,10 @@ gridH = (xMax - xMin)/bevHeight
 gridParams = ((xMin, xMax, yMin, yMax, zMin, zMax), (bevWidth, bevHeight), (gridW, gridH))
 
 
-writeFiles = True
+writeFiles = False
 if writeFiles:
     transformPCtoBEV(pcds, boxLabels, gridParams, outputFolder)
 
-
-bevs = np.asarray([f'Pandaset/BEVImages/{x}' for x in os.listdir(path)])
-bevs.sort()
-print(bevs)
+shuffleFiles = False
+if shuffleFiles:
+    create_yolo_datastore(outputFolder)

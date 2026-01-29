@@ -8,6 +8,7 @@ from utils import *
 import cv2 as cv
 from pypcd4 import PointCloud
 import re
+import shutil
 
 
 MAX_ELEMENTS = {
@@ -119,12 +120,13 @@ def transformPCtoBEV(lidarData, boxLabels: pd.DataFrame, gridParams, dataLocatio
             csvBEV = labelsBEV.T.reshape(-1)
             processedLabels[i, OUTPUT_CSV_STARTS[classNames[j]]:OUTPUT_CSV_STARTS[classNames[j]] + len(csvBEV)] = csvBEV
             
-            lt = np.array2string(labelsBEV[:, :4])
-            lt = re.sub("\[|\]", " ", lt)
-            lt = re.sub(" +", " ", lt)
-            lt = re.sub("^|\n", f"\n{j}", lt)
-            lt = lt.strip()
-            labels_text = "\n".join((labels_text, lt))      
+            if labelsBEV.size != 0:
+                lt = np.array2string(labelsBEV[:, :4])
+                lt = re.sub("\[|\]", " ", lt)
+                lt = re.sub(" +", " ", lt)
+                lt = re.sub("^|\n", f"\n{j}", lt)
+                lt = lt.strip()
+                labels_text = "\n".join((labels_text, lt))      
     
         imagesWritePath = f'{dataLocation}/BEVImages'
         if not os.path.exists(imagesWritePath):
@@ -189,6 +191,46 @@ def preprocess(pcd_points, gridParams):
     imageMap[:,:,2] = heightMap
     
     return imageMap
+
+def create_yolo_folder(imgs, labels, yolo_data_folder, folder_name):
+    copy_folder = f"{yolo_data_folder}/{folder_name}"
+    os.mkdir(copy_folder)
+    os.mkdir(f"{copy_folder}/images/")
+    os.mkdir(f"{copy_folder}/labels/")
+    for i in range(len(imgs)):
+        shutil.copy(imgs[i], f"{copy_folder}/images/")
+        shutil.copy(labels[i], f"{copy_folder}/labels/")
+
+
+def create_yolo_datastore(outputFolder):
+    bevs_path = f'{outputFolder}/BEVImages'
+    bevs = np.asarray([f'{bevs_path}/{x}' for x in os.listdir(bevs_path)])
+    bevs.sort()
+
+    labels_path = f'{outputFolder}/Labels'
+    labels = np.asarray([f'{labels_path}/{x}' for x in os.listdir(labels_path)])
+    labels.sort()
+
+    rng = np.random.RandomState(42)
+    indexes = rng.permutation(np.arange(bevs.size))
+
+    train_indexes = indexes[0:int(0.6 * len(indexes))]
+    validation_indexes = indexes[len(train_indexes):len(train_indexes) + int(0.1 * len(indexes))]
+    test_indexes = indexes[len(validation_indexes) + len(train_indexes):]
+
+    train_imgs = bevs[train_indexes];            train_labels = labels[train_indexes]
+    validation_imgs = bevs[validation_indexes];  validation_labels = labels[validation_indexes]
+    test_imgs = bevs[test_indexes];              test_labels = labels[test_indexes]
+    
+    if os.path.exists(f"{outputFolder}/yolo_data"):
+        shutil.rmtree(f"{outputFolder}/yolo_data", )
+    
+    yolo_data_folder = f"{outputFolder}/yolo_data"
+    os.mkdir(yolo_data_folder)
+    
+    create_yolo_folder(train_imgs, train_labels, yolo_data_folder, 'train')
+    create_yolo_folder(validation_imgs, validation_labels, yolo_data_folder, 'validation')
+    create_yolo_folder(test_imgs, test_labels, yolo_data_folder, 'test')
 
 def removeEmptyData():
     pass
