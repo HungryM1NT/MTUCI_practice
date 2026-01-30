@@ -5,6 +5,7 @@ from utils import *
 from filler import *
 import cv2 as cv
 from pypcd4 import PointCloud
+from PIL import Image
 
 
 # def sub2ind_2D(size, row, col):
@@ -65,28 +66,15 @@ def preprocess(pcd_points, gridParams):
     
     
 def main():
-    # pcd = o3d.io.read_point_cloud("./assets/cropped.pcd")
-
-    # points_array = np.asarray(pcd.points)
-    
-    pcd = PointCloud.from_path("./assets/0001.pcd")
-    # pcd = PointCloud.from_path("./assets/cropped.pcd")
+    pcd = PointCloud.from_path("./0001.pcd")
     points_array = pcd.numpy(("x", "y", "z"))
     points_array = points_array[~np.isnan(points_array).any(axis=1)]
 
-    model = YOLO("./best4.pt")
+    model = YOLO("./model/trainedYOLOv8.pt")
 
-    xMin = 101100.0;  xMax = 101150.0
-    yMin = 85400.0;   yMax = 85450.0
-    zMin = 140.0;     zMax = 220.0
-
-
-    xMin = -25.0
-    xMax = 25.0
-    yMin = 0.0
-    yMax = 50.0
-    zMin = -7.0
-    zMax = 15.0
+    xMin = -25.0; xMax = 25.0
+    yMin = 0.0;   yMax = 50.0
+    zMin = -7.0;  zMax = 15.0
     
     bevHeight = 608
     bevWidth  = 608
@@ -98,32 +86,31 @@ def main():
 
     bevImage = preprocess(points_array, gridParams)
     bevImage = bevImage * 255
-    bevImage = cv.cvtColor(bevImage.astype('float32'), cv.COLOR_RGB2BGR)
+    img = Image.fromarray(bevImage.astype(np.uint8))
 
-    cv.imwrite('test.jpg', bevImage)
-    # img = cv.imread("./Pandaset/yolo_data/test/images/0001.jpg")
-    img = cv.imread("test.jpg")
+    result = model([img])[0]
+    bboxes = result.boxes.xywh.cpu().detach().numpy()
+    # result.show()
+    # print(bboxes)
+    
+    bboxes = process_yolo_boxes(bboxes)
+    pcd_coords = bev_to_coords(bboxes, gridParams)
+    output_pcd = delete_points(points_array, pcd_coords)
+    new_outpud_pcd = fill_deleted_areas(output_pcd, bboxes)
+    
+    pcd_o = o3d.geometry.PointCloud()
+    v3d = o3d.utility.Vector3dVector
+    pcd_o.points = v3d(output_pcd)
+    o3d.io.write_point_cloud("./deleted.pcd", pcd_o, compressed=True)
+    
+    pcd_o = o3d.geometry.PointCloud()
+    v3d = o3d.utility.Vector3dVector
+    pcd_o.points = v3d(new_outpud_pcd)
+    o3d.io.write_point_cloud("./filled.pcd", pcd_o, compressed=True)
 
-    results = model([img])
-    for result in results:
-        boxes = result.boxes
-        result.show()
-        # print(boxes)
-    # bboxes = process_yolo_boxes(bevImage, model)
-    # pcd_coords = bev_to_coords(bboxes, gridParams)
-    # output_pcd = delete_points(points_array, pcd_coords)
-    # new_outpud_pcd = fill_deleted_areas(output_pcd, bboxes)
-    
-    # print(len(points_array))
-    # print(len(output_pcd))
-    # print(len(new_outpud_pcd))
-    
-    
-    # pcd_o = o3d.geometry.PointCloud()
-    # v3d = o3d.utility.Vector3dVector
-    # pcd_o.points = v3d(new_outpud_pcd)
-    # o3d.io.write_point_cloud("./assets/processed.pcd", pcd_o, compressed=True)
-
+    print(f'Original point num: {len(points_array)}')
+    print(f'Point num after deleting:{len(output_pcd)}')
+    print(f'Point num after filling: {len(new_outpud_pcd)}')
     
 
 if __name__ == "__main__":

@@ -1,5 +1,6 @@
 import numpy as np
 from utils import *
+import warnings
 
 
 def equation_plane(plane_ponts):
@@ -34,7 +35,7 @@ def get_plane_points_with_density(pcd_points, bboxes):
     for bbox in bboxes:
         if bbox[3] - bbox[2] < bbox[1] - bbox[0]:
             temp = bbox[0]
-            bbox[0] = bbox[1], bbox[1] = bbox[2], bbox[2] = bbox[3], bbox[3] = temp
+            bbox[0] = bbox[1]; bbox[1] = bbox[2]; bbox[2] = bbox[3]; bbox[3] = temp
         
         d_lower = bbox[1] - bbox[0]
         d_higher = bbox[3] - bbox[2]
@@ -67,7 +68,7 @@ def get_plane_points_with_density(pcd_points, bboxes):
         counts = len(point_list1) + len(point_list2) + len(point_list3)
 
         densities.append(counts / s)
-         
+        
         plane_points.append([mean_1, mean_2, mean_3])
     
     return [np.asarray(plane_points), np.asarray(densities)]
@@ -82,12 +83,12 @@ def get_plane_params(plane_points):
     
     
 def get_filling_points(plane_params, bboxes, densities):
-    sigma = 1
+    sigma = 0.5
     
     dxy = np.full((len(bboxes), 2), 0)
     dxy[:, 0] = bboxes[:, 1] - bboxes[:, 0]
     dxy[:, 1] = bboxes[:, 3] - bboxes[:, 2]
-    points_count =  dxy[:, 0] * dxy[:, 1] * densities
+    points_count =  dxy[:, 0] * dxy[:, 1] * densities * 0.7
     
     filling_points = []
     for i in range(len(bboxes)):
@@ -103,7 +104,7 @@ def get_filling_points(plane_params, bboxes, densities):
                 
                 x_norm = np.random.normal(x, sigma, 1)[0]
                 y_norm = np.random.normal(y, sigma, 1)[0]
-                z_norm = np.random.normal(z, sigma * 0.001, 1)[0]
+                z_norm = np.random.normal(z, sigma * 0.0001, 1)[0]
                 
                 filling_points.append([x_norm, y_norm, z_norm])
     

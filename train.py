@@ -3,6 +3,7 @@ import pandas as pd
 import os
 import numpy as np
 import shutil
+from ultralytics import YOLO
 
 
 outputFolder: str = './Pandaset'
@@ -41,3 +42,16 @@ if writeFiles:
 shuffleFiles = True
 if shuffleFiles:
     create_yolo_datastore(outputFolder)
+
+
+model = YOLO("yolov10n.pt")
+
+results = model.train(data='data.yaml',
+                      optimizer='Adam',
+                      epochs=40,
+                      imgsz=608,
+                      batch=4,
+                      workers=4,
+                      )
+
+metrics = model.val()

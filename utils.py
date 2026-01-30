@@ -1,7 +1,6 @@
 import numpy as np
 from ultralytics import YOLO
 import open3d
-import coords
 
 
 # Create (x, y): (counts, maxZ) dict
@@ -68,8 +67,8 @@ def get_yolo_boxes(yolo_results):
 
     return np.array(bboxes)
 
-def process_yolo_boxes(bevImage, model):
-    bev_coords = coords.coords
+def process_yolo_boxes(bevImage):
+    bev_coords = bevImage
     output = np.full(bev_coords.shape, 0)
     
     bev_coords[:, 2] = bev_coords[:, 2]
