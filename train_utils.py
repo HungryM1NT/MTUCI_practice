@@ -121,7 +121,7 @@ def transformPCtoBEV(lidarData, boxLabels: pd.DataFrame, gridParams, dataLocatio
             processedLabels[i, OUTPUT_CSV_STARTS[classNames[j]]:OUTPUT_CSV_STARTS[classNames[j]] + len(csvBEV)] = csvBEV
             
             if labelsBEV.size != 0:
-                lt = np.array2string(labelsBEV[:, :4] / 608)   # 608 for image 608x608
+                lt = np.array2string(rotate_bboxes(labelsBEV) / 608)   # 608 for image 608x608
                 lt = re.sub("\[|\]", " ", lt)
                 lt = re.sub(" +", " ", lt)
                 lt = re.sub("^|\n", f"\n{j}", lt)
@@ -179,11 +179,9 @@ def preprocess(pcd_points, gridParams):
     points_ROI[:, 0] = np.minimum(np.maximum(points_ROI[:, 0], 0), bevHeight - 1)
     points_ROI[:, 1] = np.minimum(np.maximum(points_ROI[:, 1], 0), bevWidth - 1)
     
-    print(points_ROI)
     coord_to_countval = get_CoordToCountVal_dict(points_ROI)
     
     for ((x, y), (c, z)) in coord_to_countval.items():
-        print(x, y)
         densityMap[int(x)][int(y)] = min(0.0, np.log(c + 1) / np.log(64))
         heightMap[int(x)][int(y)] = z
     
@@ -234,26 +232,68 @@ def create_yolo_datastore(outputFolder):
     create_yolo_folder(validation_imgs, validation_labels, yolo_data_folder, 'validation')
     create_yolo_folder(test_imgs, test_labels, yolo_data_folder, 'test')
 
-def removeEmptyData():
-    pass
 
-def validateInputDataComplexYOLOv4():
-    pass
+def rotate_x(a):
+    cos_a = np.cos(np.deg2rad(a))
+    sin_a = np.sin(np.deg2rad(a))
+    return lambda x, y: x * cos_a - y * sin_a
 
-def isValidDetectorData():
-    pass
+def rotate_y(a):
+    cos_a = np.cos(np.deg2rad(a))
+    sin_a = np.sin(np.deg2rad(a))
+    return lambda x, y: x * sin_a + y * cos_a
 
-def iCheckImages():
-    pass
-
-def iCheckBoxes():
-    pass
-
-def iCheckLabels():
-    pass
-
-def preprocessData():
-    pass
-
-# def helperDisplayBoxes():
-#     pass
+#     p1 (x1, y1)=====p2(x2, y1) 
+#         ||              ||
+#         ||              ||
+#         ||       o      ||
+#         ||              ||
+#         ||              ||
+#     p3 (x1, y2)=====p4 (x2, y2)
+def rotate_bboxes(bboxes):
+    start_x1 = bboxes[:, 0] - bboxes[:, 2] / 2
+    start_x2 = start_x1 + bboxes[:, 2]
+    start_y1 = bboxes[:, 1] - bboxes[:, 3] / 2
+    start_y2 = start_y1 + bboxes[:, 3]
+    
+    # Move center to (0, 0)
+    start_x1 = start_x1 - bboxes[:, 0]
+    start_x2 = start_x2 - bboxes[:, 0]
+    start_y1 = start_y1 - bboxes[:, 1]
+    start_y2 = start_y2 - bboxes[:, 1]
+    
+    # print(start_x1)
+    rotate_x_func = rotate_x(bboxes[:, 4])
+    rotate_y_func = rotate_y(bboxes[:, 4])
+    # print(x_test)
+    
+    # x1x2x3x4y1y2y3y4
+    new_corners = np.zeros((len(bboxes[:,0]), 8))
+    # Make it shortier
+    new_corners[:, 0] = np.round(rotate_x_func(start_x1, start_y1), 4)
+    new_corners[:, 1] = np.round(rotate_x_func(start_x2, start_y1), 4)
+    new_corners[:, 2] = np.round(rotate_x_func(start_x1, start_y2), 4)
+    new_corners[:, 3] = np.round(rotate_x_func(start_x2, start_y2), 4)
+    new_corners[:, 4] = np.round(rotate_y_func(start_x1, start_y1), 4)
+    new_corners[:, 5] = np.round(rotate_y_func(start_x2, start_y1), 4)
+    new_corners[:, 6] = np.round(rotate_y_func(start_x1, start_y2), 4)
+    new_corners[:, 7] = np.round(rotate_y_func(start_x2, start_y2), 4)
+    
+    new_x_max = np.amax(new_corners[:, 0:4], axis=1)
+    new_x_min = np.amin(new_corners[:, 0:4], axis=1)
+    new_y_max = np.amax(new_corners[:, 5:], axis=1)
+    new_y_min = np.amin(new_corners[:, 5:], axis=1)
+    
+    # Move center
+    new_x_max = new_x_max + bboxes[:, 0]
+    new_x_min = new_x_min + bboxes[:, 0]
+    new_y_max = new_y_max + bboxes[:, 1]
+    new_y_min = new_y_min + bboxes[:, 1]
+    
+    xywh = np.zeros((len(bboxes[:,0]), 4))
+    xywh[:, 0] = (new_x_max + new_x_min) / 2
+    xywh[:, 1] = (new_y_max + new_y_min) / 2
+    xywh[:, 2] = new_x_max - new_x_min
+    xywh[:, 3] = new_y_max - new_y_min
+    
+    return xywh

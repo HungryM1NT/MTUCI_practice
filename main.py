@@ -69,8 +69,8 @@ def main():
 
     # points_array = np.asarray(pcd.points)
     
-    # pcd = PointCloud.from_path("./assets/0001.pcd")
-    pcd = PointCloud.from_path("./assets/cropped.pcd")
+    pcd = PointCloud.from_path("./assets/0001.pcd")
+    # pcd = PointCloud.from_path("./assets/cropped.pcd")
     points_array = pcd.numpy(("x", "y", "z"))
     points_array = points_array[~np.isnan(points_array).any(axis=1)]
 
@@ -81,12 +81,12 @@ def main():
     zMin = 140.0;     zMax = 220.0
 
 
-    # xMin = -25.0
-    # xMax = 25.0
-    # yMin = 0.0
-    # yMax = 50.0
-    # zMin = -7.0
-    # zMax = 15.0
+    xMin = -25.0
+    xMax = 25.0
+    yMin = 0.0
+    yMax = 50.0
+    zMin = -7.0
+    zMax = 15.0
     
     bevHeight = 608
     bevWidth  = 608
