@@ -121,7 +121,7 @@ def transformPCtoBEV(lidarData, boxLabels: pd.DataFrame, gridParams, dataLocatio
             processedLabels[i, OUTPUT_CSV_STARTS[classNames[j]]:OUTPUT_CSV_STARTS[classNames[j]] + len(csvBEV)] = csvBEV
             
             if labelsBEV.size != 0:
-                lt = np.array2string(labelsBEV[:, :4])
+                lt = np.array2string(labelsBEV[:, :4] / 608)   # 608 for image 608x608
                 lt = re.sub("\[|\]", " ", lt)
                 lt = re.sub(" +", " ", lt)
                 lt = re.sub("^|\n", f"\n{j}", lt)
@@ -176,13 +176,15 @@ def preprocess(pcd_points, gridParams):
     heightMap = np.zeros((bevHeight, bevWidth))
     densityMap = np.zeros((bevHeight, bevWidth))
     
-    points_ROI[:, 0] = np.minimum(np.maximum(points_ROI[:, 0], 0), bevHeight)
-    points_ROI[:, 1] = np.minimum(np.maximum(points_ROI[:, 1], 0), bevWidth)
+    points_ROI[:, 0] = np.minimum(np.maximum(points_ROI[:, 0], 0), bevHeight - 1)
+    points_ROI[:, 1] = np.minimum(np.maximum(points_ROI[:, 1], 0), bevWidth - 1)
     
+    print(points_ROI)
     coord_to_countval = get_CoordToCountVal_dict(points_ROI)
     
     for ((x, y), (c, z)) in coord_to_countval.items():
-        densityMap[int(x)][int(y)] = min(1.0, np.log(c + 1) / np.log(64))
+        print(x, y)
+        densityMap[int(x)][int(y)] = min(0.0, np.log(c + 1) / np.log(64))
         heightMap[int(x)][int(y)] = z
     
     imageMap = np.zeros([bevHeight, bevWidth, 3])

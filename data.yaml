@@ -1,0 +1,13 @@
+train: Pandaset/yolo_data/train/images
+val: Pandaset/yolo_data/validation/images
+test: Pandaset/yolo_data/test/images
+
+train_label_dir: Pandaset/yolo_data/train/labels
+val_label_dir: Pandaset/yolo_data/validation/labels
+test_label_dir: Pandaset/yolo_data/test/labels
+
+nc: 3
+names:
+  0: Car
+  1: Truck
+  2: Pedestrain

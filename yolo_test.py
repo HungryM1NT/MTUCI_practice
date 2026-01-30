@@ -3,7 +3,7 @@ from ultralytics import YOLO
 # Возомжно нужно будет не 608х608, а 640х640
 model = YOLO("yolov10n.pt")
 
-results = model.train(data=[],
+results = model.train(data='data.yaml',
                       optimizer='Adam',
                       lr0=0.001,
                       lrf=1.0,
@@ -11,10 +11,11 @@ results = model.train(data=[],
                       weight_decay=0.0005,
                       epochs=50,
                       batch=4,
-                      shuffle=True,  #?
+                    #   shuffle=True,  #?
                       workers=4,
                       plots=True,
                       exist_ok=True
                       )
 # no checkpoint
 
+model.export(format="pt")

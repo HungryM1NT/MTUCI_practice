@@ -34,10 +34,10 @@ gridH = (xMax - xMin)/bevHeight
 gridParams = ((xMin, xMax, yMin, yMax, zMin, zMax), (bevWidth, bevHeight), (gridW, gridH))
 
 
-writeFiles = False
+writeFiles = True
 if writeFiles:
     transformPCtoBEV(pcds, boxLabels, gridParams, outputFolder)
 
-shuffleFiles = False
+shuffleFiles = True
 if shuffleFiles:
     create_yolo_datastore(outputFolder)
