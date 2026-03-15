@@ -3,7 +3,7 @@ import numpy as np
 from ultralytics import YOLO
 from utils import *
 from filler import *
-import cv2 as cv
+import cv2
 from pypcd4 import PointCloud
 from PIL import Image
 
@@ -70,7 +70,7 @@ def main():
     points_array = pcd.numpy(("x", "y", "z"))
     points_array = points_array[~np.isnan(points_array).any(axis=1)]
 
-    model = YOLO("./model/trainedYOLOv8.pt")
+    model = YOLO("./model/trainedYOLOv10.pt")
 
     xMin = -25.0; xMax = 25.0
     yMin = 0.0;   yMax = 50.0
@@ -90,6 +90,10 @@ def main():
 
     result = model([img])[0]
     bboxes = result.boxes.xywh.cpu().detach().numpy()
+
+    cv2.imshow("BEV", result.plot())
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
     # result.show()
     # print(bboxes)
     
